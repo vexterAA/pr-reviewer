@@ -1,0 +1,5 @@
+http:
+  port: 8080
+
+db:
+  dsn: postgres://user:password@db:5432/pr_review?sslmode=disable

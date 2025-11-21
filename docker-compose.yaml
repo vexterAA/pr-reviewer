@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: pr_review
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    environment:
+      DB_DSN: postgres://user:password@db:5432/pr_review?sslmode=disable
+      HTTP_PORT: "8080"
+    depends_on:
+      - db
+    ports:
+      - "8080:8080"

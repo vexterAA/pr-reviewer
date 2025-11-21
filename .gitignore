@@ -1,0 +1,7 @@
+/.env
+/bin
+/dist
+/pr-reviewer
+.idea
+.vscode
+.DS_Store

@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  db_e2e:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: pr_review_e2e
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+  api_e2e:
+    build: ..
+    environment:
+      DB_DSN: postgres://user:password@db_e2e:5432/pr_review_e2e?sslmode=disable
+      HTTP_PORT: "8080"
+    depends_on:
+      - db_e2e
+  tests:
+    build: ./tests
+    depends_on:
+      - api_e2e
