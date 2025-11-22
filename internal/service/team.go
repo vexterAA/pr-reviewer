@@ -4,22 +4,34 @@ import (
 	"context"
 
 	"pr-reviewer/internal/domain"
+	"pr-reviewer/internal/repository"
 )
 
-type TeamRepository interface {
-	// TODO: define repo methods.
-}
-
 type TeamService interface {
-	_()
+	AddTeam(ctx context.Context, team domain.Team) (*domain.Team, error)
+	GetTeam(ctx context.Context, teamName string) (*domain.Team, error)
 }
 
 type teamService struct {
-	repo TeamRepository
+	repo repository.TeamRepository
 }
 
-func NewTeamService(repo TeamRepository) TeamService {
+func NewTeamService(repo repository.TeamRepository) TeamService {
 	return &teamService{repo: repo}
 }
 
-func (s *teamService) _() {}
+func (s *teamService) AddTeam(ctx context.Context, team domain.Team) (*domain.Team, error) {
+	created, err := s.repo.Create(ctx, team)
+	if err != nil {
+		return nil, err
+	}
+	return &created, nil
+}
+
+func (s *teamService) GetTeam(ctx context.Context, teamName string) (*domain.Team, error) {
+	team, err := s.repo.Get(ctx, teamName)
+	if err != nil {
+		return nil, err
+	}
+	return &team, nil
+}

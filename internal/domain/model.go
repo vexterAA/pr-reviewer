@@ -1,6 +1,9 @@
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type PullRequestStatus string
 
@@ -55,3 +58,18 @@ type DomainError struct {
 }
 
 func (e *DomainError) Error() string { return e.Message }
+
+func NewDomainError(code ErrorCode, message string) *DomainError {
+	return &DomainError{
+		Code:    code,
+		Message: message,
+	}
+}
+
+func AsDomainError(err error) (*DomainError, bool) {
+	var domainErr *DomainError
+	if errors.As(err, &domainErr) {
+		return domainErr, true
+	}
+	return nil, false
+}

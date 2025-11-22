@@ -4,22 +4,34 @@ import (
 	"context"
 
 	"pr-reviewer/internal/domain"
+	"pr-reviewer/internal/repository"
 )
 
-type UserRepository interface {
-	// TODO: define repo methods.
-}
-
 type UserService interface {
-	_()
+	SetActive(ctx context.Context, userID string, isActive bool) (*domain.User, error)
+	GetReviewPullRequests(ctx context.Context, userID string) ([]domain.PullRequestShort, error)
 }
 
 type userService struct {
-	repo UserRepository
+	users        repository.UserRepository
+	pullRequests repository.PullRequestRepository
 }
 
-func NewUserService(repo UserRepository) UserService {
-	return &userService{repo: repo}
+func NewUserService(users repository.UserRepository, pullRequests repository.PullRequestRepository) UserService {
+	return &userService{
+		users:        users,
+		pullRequests: pullRequests,
+	}
 }
 
-func (s *userService) _() {}
+func (s *userService) SetActive(ctx context.Context, userID string, isActive bool) (*domain.User, error) {
+	updated, err := s.users.SetActive(ctx, userID, isActive)
+	if err != nil {
+		return nil, err
+	}
+	return &updated, nil
+}
+
+func (s *userService) GetReviewPullRequests(ctx context.Context, userID string) ([]domain.PullRequestShort, error) {
+	return s.pullRequests.ListByReviewer(ctx, userID)
+}
