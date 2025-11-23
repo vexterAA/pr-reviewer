@@ -2,6 +2,8 @@ package repositorypostgres
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"pr-reviewer/internal/domain"
 	"pr-reviewer/internal/repository"
@@ -24,7 +26,10 @@ func (r *userRepo) GetUserByID(ctx context.Context, userID string) (domain.User,
 
 	var u domain.User
 	if err := row.Scan(&u.ID, &u.Username, &u.TeamName, &u.IsActive); err != nil {
-		return domain.User{}, wrapNotFound(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.User{}, domain.NewDomainError(domain.ErrorCodeNotFound, "user not found")
+		}
+		return domain.User{}, err
 	}
 	return u, nil
 }
@@ -39,7 +44,10 @@ func (r *userRepo) SetActive(ctx context.Context, userID string, isActive bool) 
 
 	var u domain.User
 	if err := row.Scan(&u.ID, &u.Username, &u.TeamName, &u.IsActive); err != nil {
-		return domain.User{}, wrapNotFound(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.User{}, domain.NewDomainError(domain.ErrorCodeNotFound, "user not found")
+		}
+		return domain.User{}, err
 	}
 	return u, nil
 }

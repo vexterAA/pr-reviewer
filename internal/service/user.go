@@ -25,6 +25,13 @@ func NewUserService(users repository.UserRepository, pullRequests repository.Pul
 }
 
 func (s *userService) SetActive(ctx context.Context, userID string, isActive bool) (*domain.User, error) {
+	if _, err := s.users.GetUserByID(ctx, userID); err != nil {
+		if derr, ok := domain.AsDomainError(err); ok && derr.Code == domain.ErrorCodeNotFound {
+			return nil, domain.NewDomainError(domain.ErrorCodeNotFound, "user not found")
+		}
+		return nil, err
+	}
+
 	updated, err := s.users.SetActive(ctx, userID, isActive)
 	if err != nil {
 		return nil, err
@@ -33,5 +40,11 @@ func (s *userService) SetActive(ctx context.Context, userID string, isActive boo
 }
 
 func (s *userService) GetReviewPullRequests(ctx context.Context, userID string) ([]domain.PullRequestShort, error) {
+	if _, err := s.users.GetUserByID(ctx, userID); err != nil {
+		if derr, ok := domain.AsDomainError(err); ok && derr.Code == domain.ErrorCodeNotFound {
+			return nil, domain.NewDomainError(domain.ErrorCodeNotFound, "user not found")
+		}
+		return nil, err
+	}
 	return s.pullRequests.ListByReviewer(ctx, userID)
 }

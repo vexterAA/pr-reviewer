@@ -3,6 +3,7 @@ package repositorypostgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"pr-reviewer/internal/domain"
@@ -52,7 +53,10 @@ func (r *prRepo) GetPullRequestByID(ctx context.Context, prID string) (domain.Pu
 
 	pr, err := scanPullRequest(row)
 	if err != nil {
-		return domain.PullRequest{}, wrapNotFound(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.PullRequest{}, domain.NewDomainError(domain.ErrorCodeNotFound, "pull request not found")
+		}
+		return domain.PullRequest{}, err
 	}
 
 	reviewers, err := r.listReviewers(ctx, prID)
@@ -74,7 +78,10 @@ func (r *prRepo) MergePullRequest(ctx context.Context, prID string, mergedAt tim
 
 	pr, err := scanPullRequest(row)
 	if err != nil {
-		return domain.PullRequest{}, wrapNotFound(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.PullRequest{}, domain.NewDomainError(domain.ErrorCodeNotFound, "pull request not found")
+		}
+		return domain.PullRequest{}, err
 	}
 
 	reviewers, err := r.listReviewers(ctx, prID)
@@ -95,7 +102,10 @@ func (r *prRepo) UpdateStatus(ctx context.Context, prID string, status domain.Pu
 
 	pr, err := scanPullRequest(row)
 	if err != nil {
-		return domain.PullRequest{}, wrapNotFound(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.PullRequest{}, domain.NewDomainError(domain.ErrorCodeNotFound, "pull request not found")
+		}
+		return domain.PullRequest{}, err
 	}
 	reviewers, err := r.listReviewers(ctx, prID)
 	if err != nil {

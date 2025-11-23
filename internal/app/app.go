@@ -30,10 +30,11 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	teamRepo := repositorypostgres.NewTeamRepository(db)
 	userRepo := repositorypostgres.NewUserRepository(db)
 	prRepo := repositorypostgres.NewPullRequestRepository(db)
+	uow := repositorypostgres.NewUnitOfWork(db)
 
 	teamService := service.NewTeamService(teamRepo)
 	userService := service.NewUserService(userRepo, prRepo)
-	prService := service.NewPullRequestService(prRepo)
+	prService := service.NewPullRequestService(prRepo, userRepo, uow)
 
 	router := httpapi.NewRouter(teamService, userService, prService)
 

@@ -2,6 +2,8 @@ package repositorypostgres
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"pr-reviewer/internal/domain"
 	"pr-reviewer/internal/repository"
@@ -55,7 +57,10 @@ func (r *teamRepo) GetTeamByName(ctx context.Context, teamName string) (domain.T
 
 	var team domain.Team
 	if err := row.Scan(&team.Name); err != nil {
-		return domain.Team{}, wrapNotFound(err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return domain.Team{}, domain.NewDomainError(domain.ErrorCodeNotFound, "team not found")
+		}
+		return domain.Team{}, err
 	}
 
 	rows, err := r.exec.QueryContext(ctx, `

@@ -21,6 +21,14 @@ func NewTeamService(repo repository.TeamRepository) TeamService {
 }
 
 func (s *teamService) AddTeam(ctx context.Context, team domain.Team) (*domain.Team, error) {
+	if _, err := s.repo.GetTeamByName(ctx, team.Name); err == nil {
+		return nil, domain.NewDomainError(domain.ErrorCodeTeamExists, "team already exists")
+	} else if derr, ok := domain.AsDomainError(err); ok && derr.Code == domain.ErrorCodeNotFound {
+		// ok
+	} else if err != nil {
+		return nil, err
+	}
+
 	created, err := s.repo.UpsertTeam(ctx, team)
 	if err != nil {
 		return nil, err
@@ -31,6 +39,9 @@ func (s *teamService) AddTeam(ctx context.Context, team domain.Team) (*domain.Te
 func (s *teamService) GetTeam(ctx context.Context, teamName string) (*domain.Team, error) {
 	team, err := s.repo.GetTeamByName(ctx, teamName)
 	if err != nil {
+		if derr, ok := domain.AsDomainError(err); ok && derr.Code == domain.ErrorCodeNotFound {
+			return nil, domain.NewDomainError(domain.ErrorCodeNotFound, "team not found")
+		}
 		return nil, err
 	}
 	return &team, nil
