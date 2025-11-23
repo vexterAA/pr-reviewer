@@ -1,8 +1,12 @@
 package http
 
-import "net/http"
+import (
+	"net/http"
 
-func NewRouter() http.Handler {
+	"pr-reviewer/internal/service"
+)
+
+func NewRouter(_ service.TeamService, _ service.UserService, _ service.PullRequestService) http.Handler {
 	mux := http.NewServeMux()
 	// TODO: register handlers.
 	return mux
