@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"pr-reviewer/internal/domain"
+	"pr-reviewer/internal/metrics"
 	"pr-reviewer/internal/repository"
 )
 
@@ -15,16 +16,18 @@ type PullRequestService interface {
 }
 
 type pullRequestService struct {
-	prs   repository.PullRequestRepository
-	users repository.UserRepository
-	uow   repository.UnitOfWork
+	prs     repository.PullRequestRepository
+	users   repository.UserRepository
+	uow     repository.UnitOfWork
+	metrics metrics.BusinessMetrics
 }
 
-func NewPullRequestService(prs repository.PullRequestRepository, users repository.UserRepository, uow repository.UnitOfWork) PullRequestService {
+func NewPullRequestService(prs repository.PullRequestRepository, users repository.UserRepository, uow repository.UnitOfWork, metrics metrics.BusinessMetrics) PullRequestService {
 	return &pullRequestService{
-		prs:   prs,
-		users: users,
-		uow:   uow,
+		prs:     prs,
+		users:   users,
+		uow:     uow,
+		metrics: metrics,
 	}
 }
 
@@ -71,6 +74,10 @@ func (s *pullRequestService) Create(ctx context.Context, pr domain.PullRequest) 
 		return nil, err
 	}
 
+	if s.metrics != nil {
+		s.metrics.IncPRCreated()
+	}
+
 	return &created, nil
 }
 
@@ -91,6 +98,10 @@ func (s *pullRequestService) Merge(ctx context.Context, prID string) (*domain.Pu
 	if err != nil {
 		return nil, err
 	}
+
+	if s.metrics != nil {
+		s.metrics.IncPRMerged()
+	}
 	return &merged, nil
 }
 
@@ -98,48 +109,63 @@ func (s *pullRequestService) Reassign(ctx context.Context, prID, oldReviewerID s
 	pr, err := s.prs.GetPullRequestByID(ctx, prID)
 	if err != nil {
 		if derr, ok := domain.AsDomainError(err); ok && derr.Code == domain.ErrorCodeNotFound {
-			return nil, "", domain.NewDomainError(domain.ErrorCodeNotFound, "pull request not found")
+			return nil, "", s.reassignMetricErr("not_found", domain.NewDomainError(domain.ErrorCodeNotFound, "pull request not found"))
 		}
-		return nil, "", err
+		return nil, "", s.reassignMetricErr("internal_error", err)
 	}
 
 	if pr.Status == domain.PullRequestStatusMerged {
-		return nil, "", domain.NewDomainError(domain.ErrorCodePRMerged, "cannot reassign on merged pull request")
+		return nil, "", s.reassignMetricErr("pr_merged", domain.NewDomainError(domain.ErrorCodePRMerged, "cannot reassign on merged pull request"))
 	}
 
 	if !contains(pr.AssignedReviewers, oldReviewerID) {
-		return nil, "", domain.NewDomainError(domain.ErrorCodeNotAssigned, "reviewer is not assigned to this pull request")
+		return nil, "", s.reassignMetricErr("not_assigned", domain.NewDomainError(domain.ErrorCodeNotAssigned, "reviewer is not assigned to this pull request"))
 	}
 
 	oldReviewer, err := s.users.GetUserByID(ctx, oldReviewerID)
 	if err != nil {
 		if derr, ok := domain.AsDomainError(err); ok && derr.Code == domain.ErrorCodeNotFound {
-			return nil, "", domain.NewDomainError(domain.ErrorCodeNotFound, "reviewer not found")
+			return nil, "", s.reassignMetricErr("not_found", domain.NewDomainError(domain.ErrorCodeNotFound, "reviewer not found"))
 		}
-		return nil, "", err
+		return nil, "", s.reassignMetricErr("internal_error", err)
 	}
 
 	candidate, err := s.pickReplacementCandidate(ctx, oldReviewer.TeamName, pr.AuthorID, pr.AssignedReviewers)
 	if err != nil {
-		return nil, "", err
+		code := "internal_error"
+		if derr, ok := domain.AsDomainError(err); ok && derr.Code == domain.ErrorCodeNoCandidate {
+			code = "no_candidate"
+		}
+		return nil, "", s.reassignMetricErr(code, err)
 	}
 
 	tx, err := s.uow.Begin(ctx)
 	if err != nil {
-		return nil, "", err
+		return nil, "", s.reassignMetricErr("internal_error", err)
 	}
 	defer tx.Rollback(ctx)
 
 	updated, err := tx.ReassignReviewer(ctx, prID, oldReviewerID, candidate)
 	if err != nil {
-		return nil, "", err
+		return nil, "", s.reassignMetricErr("internal_error", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, "", err
+		return nil, "", s.reassignMetricErr("internal_error", err)
+	}
+
+	if s.metrics != nil {
+		s.metrics.IncPRReassign("success")
 	}
 
 	return &updated, candidate, nil
+}
+
+func (s *pullRequestService) reassignMetricErr(result string, err error) error {
+	if s.metrics != nil {
+		s.metrics.IncPRReassign(result)
+	}
+	return err
 }
 
 func pickReviewers(users []domain.User, authorID string, limit int) []string {

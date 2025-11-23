@@ -1,0 +1,23 @@
+all: false
+dir: mocks/{{.PackageName}}
+filename: '{{.InterfaceName}}_mock.go'
+force-file-write: true
+formatter: goimports
+generate: true
+include-auto-generated: false
+log-level: info
+structname: 'Mock{{.InterfaceName}}'
+pkgname: '{{.SrcPackageName}}'
+recursive: false
+require-template-schema-exists: true
+template: testify
+template-schema: '{{.Template}}.schema.json'
+packages:
+  pr-reviewer/internal/repository:
+    config:
+      all: true
+      dir: mocks/repository
+  pr-reviewer/internal/service:
+    config:
+      all: true
+      dir: mocks/service

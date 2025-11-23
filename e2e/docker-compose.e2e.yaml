@@ -17,3 +17,5 @@ services:
     build: ./tests
     depends_on:
       - api_e2e
+    environment:
+      BASE_URL: http://api_e2e:8080

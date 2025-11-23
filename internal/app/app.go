@@ -10,6 +10,7 @@ import (
 	"pr-reviewer/internal/config"
 	httpapi "pr-reviewer/internal/http"
 	"pr-reviewer/internal/logging"
+	"pr-reviewer/internal/metrics"
 	"pr-reviewer/internal/repositorypostgres"
 	"pr-reviewer/internal/service"
 )
@@ -31,12 +32,13 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	userRepo := repositorypostgres.NewUserRepository(db)
 	prRepo := repositorypostgres.NewPullRequestRepository(db)
 	uow := repositorypostgres.NewUnitOfWork(db)
+	httpMetrics, bizMetrics := metrics.New()
 
 	teamService := service.NewTeamService(teamRepo)
 	userService := service.NewUserService(userRepo, prRepo)
-	prService := service.NewPullRequestService(prRepo, userRepo, uow)
+	prService := service.NewPullRequestService(prRepo, userRepo, uow, bizMetrics)
 
-	router := httpapi.NewRouter(teamService, userService, prService)
+	router := httpapi.NewRouter(teamService, userService, prService, httpMetrics)
 
 	addr := cfg.HTTPPort
 	if !strings.HasPrefix(addr, ":") {

@@ -3,10 +3,13 @@ package http
 import (
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
+	"pr-reviewer/internal/metrics"
 	"pr-reviewer/internal/service"
 )
 
-func NewRouter(teamSvc service.TeamService, userSvc service.UserService, prSvc service.PullRequestService) http.Handler {
+func NewRouter(teamSvc service.TeamService, userSvc service.UserService, prSvc service.PullRequestService, httpMetrics metrics.HTTPMetrics) http.Handler {
 	mux := http.NewServeMux()
 
 	teamHandlers := newTeamHandlers(teamSvc)
@@ -23,7 +26,16 @@ func NewRouter(teamSvc service.TeamService, userSvc service.UserService, prSvc s
 	mux.HandleFunc("/pullRequest/merge", method("POST", prHandlers.Merge))
 	mux.HandleFunc("/pullRequest/reassign", method("POST", prHandlers.Reassign))
 
-	return mux
+	metricsHandler := promhttp.Handler()
+	wrapped := withHTTPMetrics(mux, httpMetrics)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/metrics" {
+			metricsHandler.ServeHTTP(w, r)
+			return
+		}
+		wrapped.ServeHTTP(w, r)
+	})
 }
 
 func method(expected string, h func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
