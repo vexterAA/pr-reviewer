@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"pr-reviewer/internal/domain"
 	"pr-reviewer/internal/repository"
@@ -10,7 +11,7 @@ import (
 type PullRequestService interface {
 	Create(ctx context.Context, pr domain.PullRequest) (*domain.PullRequest, error)
 	Merge(ctx context.Context, prID string) (*domain.PullRequest, error)
-	Reassign(ctx context.Context, prID, oldReviewerID string) (*domain.PullRequest, string, error)
+	Reassign(ctx context.Context, prID, oldReviewerID, newReviewerID string) (*domain.PullRequest, error)
 }
 
 type pullRequestService struct {
@@ -22,7 +23,7 @@ func NewPullRequestService(repo repository.PullRequestRepository) PullRequestSer
 }
 
 func (s *pullRequestService) Create(ctx context.Context, pr domain.PullRequest) (*domain.PullRequest, error) {
-	created, err := s.repo.Create(ctx, pr)
+	created, err := s.repo.CreatePullRequest(ctx, pr)
 	if err != nil {
 		return nil, err
 	}
@@ -30,17 +31,17 @@ func (s *pullRequestService) Create(ctx context.Context, pr domain.PullRequest) 
 }
 
 func (s *pullRequestService) Merge(ctx context.Context, prID string) (*domain.PullRequest, error) {
-	merged, err := s.repo.Merge(ctx, prID)
+	merged, err := s.repo.MergePullRequest(ctx, prID, time.Now().UTC())
 	if err != nil {
 		return nil, err
 	}
 	return &merged, nil
 }
 
-func (s *pullRequestService) Reassign(ctx context.Context, prID, oldReviewerID string) (*domain.PullRequest, string, error) {
-	updated, replacedBy, err := s.repo.ReassignReviewer(ctx, prID, oldReviewerID)
+func (s *pullRequestService) Reassign(ctx context.Context, prID, oldReviewerID, newReviewerID string) (*domain.PullRequest, error) {
+	updated, err := s.repo.ReassignReviewer(ctx, prID, oldReviewerID, newReviewerID)
 	if err != nil {
-		return nil, "", err
+		return nil, err
 	}
-	return &updated, replacedBy, nil
+	return &updated, nil
 }

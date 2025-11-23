@@ -21,7 +21,7 @@ func NewTeamService(repo repository.TeamRepository) TeamService {
 }
 
 func (s *teamService) AddTeam(ctx context.Context, team domain.Team) (*domain.Team, error) {
-	created, err := s.repo.Create(ctx, team)
+	created, err := s.repo.UpsertTeam(ctx, team)
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +29,7 @@ func (s *teamService) AddTeam(ctx context.Context, team domain.Team) (*domain.Te
 }
 
 func (s *teamService) GetTeam(ctx context.Context, teamName string) (*domain.Team, error) {
-	team, err := s.repo.Get(ctx, teamName)
+	team, err := s.repo.GetTeamByName(ctx, teamName)
 	if err != nil {
 		return nil, err
 	}
