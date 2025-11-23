@@ -34,6 +34,14 @@ func WriteError(w http.ResponseWriter, err error) {
 	})
 }
 
+func writeBadRequest(w http.ResponseWriter, msg string) {
+	writeJSON(w, http.StatusBadRequest, ErrorResponse{
+		Error: errorPayload{
+			Message: msg,
+		},
+	})
+}
+
 func statusForDomainCode(code domain.ErrorCode) int {
 	switch code {
 	case domain.ErrorCodeTeamExists:
